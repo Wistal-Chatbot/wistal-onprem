@@ -200,7 +200,7 @@ export const DEFAULT_ERP_MODEL: ErpTableModel[] = [
     columns: [
       txt("numer_faktury", "Numer faktury", true),
       int("lp", "Lp.", true),
-      txt("towar_kod", "Kod towaru", true),
+      txt("towar_kod", "Kod towaru"),
       txt("nazwa", "Nazwa"),
       num("ilosc", "Ilość"),
       num("rabat", "Rabat"),
@@ -243,7 +243,7 @@ export const DEFAULT_ERP_MODEL: ErpTableModel[] = [
     columns: [
       txt("numer_faktury", "Numer faktury", true),
       int("lp", "Lp.", true),
-      txt("towar_kod", "Kod towaru", true),
+      txt("towar_kod", "Kod towaru"),
       txt("nazwa", "Nazwa"),
       num("ilosc", "Ilość"),
       txt("jm", "JM"),
@@ -285,7 +285,7 @@ export const DEFAULT_ERP_MODEL: ErpTableModel[] = [
     columns: [
       txt("numer_zamowienia", "Numer zamówienia", true),
       int("lp", "Lp.", true),
-      txt("towar_kod", "Kod towaru", true),
+      txt("towar_kod", "Kod towaru"),
       txt("nazwa", "Nazwa"),
       num("ilosc", "Ilość"),
       txt("jm", "JM"),
