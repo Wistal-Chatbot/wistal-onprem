@@ -104,11 +104,20 @@ Konto użytkownika tworzy się samo przy pierwszym udanym logowaniu OTP.
    Zdanie „bez nich text-to-SQL nie zna schematu ERP" z poprzedniej wersji tego
    punktu było nieprawdziwe.
 2. **Sync z Optimy** — teraz najważniejszy punkt listy. Repo `optima-neon-sync`
-   przepiąć z Neona na lokalnego postgresa. Uwaga: allowlist SQL wywodzi się
-   **na żywo z tabel bazowych w schemacie `public`**
-   (`lib/sql/allowlist.ts`), więc dopóki `public` lokalnie jest puste, czat nie
-   ma czego odpytywać — niezależnie od metadanych w schemacie `chatbot`.
-   **Nie wyłączać Neona przed potwierdzeniem, że dane ERP są lokalnie.**
+   przepiąć z Neona na lokalnego postgresa. Allowlist SQL wywodzi się **na żywo
+   z tabel bazowych w schemacie `public`** (`lib/sql/allowlist.ts`), więc dopóki
+   `public` jest puste, czat nie ma czego odpytywać — niezależnie od metadanych
+   w schemacie `chatbot`.
+
+   Stan zweryfikowany 2026-08-17: **`public` nie ma ani jednej tabeli**, a
+   `chatbot.query_audit` ma 0 wierszy — czyli on-prem nie wykonano dotąd żadnego
+   zapytania do danych. Metadane są w stanie fabrycznym z migracji (`erp_tables`
+   9, `erp_columns` 80, `system_prompts` 5, `quick_actions` i `ai_reports` 0).
+   Sync musi utworzyć 9 tabel: `kontrahenci`, `towary`, `faktury_sprzedazy`
+   (+ `_pozycje`), `faktury_zakupu` (+ `_pozycje`), `zamowienia_dostawcy`
+   (+ `_pozycje`), `dokumenty_powiazane`.
+
+   **Nie wyłączać Neona, dopóki sync nie zapełni lokalnego `public`.**
 3. ~~**Wersjonowanie configu deployu**~~ — ZROBIONE 2026-08-17. `Dockerfile`,
    `deploy/compose.yml`, `deploy/caddy/Caddyfile` i `next.config.ts` ze
    `standalone` są w repo (patrz „Config deployu w repo" wyżej). Lokalna edycja
