@@ -42,6 +42,21 @@ services:
         condition: service_healthy
     command: ["npx", "drizzle-kit", "migrate"]
 
+  # Sync Comarch Optima -> public.* (repo Wistal-Chatbot/optima-neon-sync,
+  # klon w /opt/wistal/sync). Pętla harmonogramu jest w kontenerze, więc nie ma
+  # tu ani crona, ani systemd. Poświadczenia do Optimy i DATABASE_URL wskazujący
+  # na `postgres:5432` idą z sync.env — port bazy pozostaje zamknięty dla LAN-u.
+  # Schemat docelowy zakłada sql/001_public_schema.sql z tego samego repo.
+  sync:
+    build:
+      context: ./sync
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: sync.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
