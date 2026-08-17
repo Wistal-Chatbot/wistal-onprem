@@ -130,3 +130,10 @@ Konto użytkownika tworzy się samo przy pierwszym udanym logowaniu OTP.
    Przy haśle Postgresa pamiętać o zmianie w **dwóch** miejscach w `.env`:
    `POSTGRES_PASSWORD` i hasło wewnątrz `DATABASE_URL`.
 5. Docelowo: prawdziwy certyfikat TLS zamiast `tls internal`, wpis w firmowym DNS.
+6. **Migracja poprawiająca seed `erp_columns`**: `towar_kod` był w trzech
+   tabelach pozycji oznaczony jako część klucza głównego, co jest nieprawdą
+   (kolumna leci z `LEFT JOIN` i bywa NULL-em, a `ON CONFLICT` synca celuje
+   w dwie kolumny). Poprawione 2026-08-17 w `lib/erp-schema/model.ts` i wprost
+   w bazie on-prem, ale **seed w migracji `0006_erp_tables.sql` nadal jest
+   błędny** — świeża instalacja odtworzy błąd. Do zrobienia na maszynie z Node:
+   `npx drizzle-kit generate` z migracją danych albo poprawka samego 0006.
