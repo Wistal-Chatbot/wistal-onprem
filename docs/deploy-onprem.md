@@ -91,12 +91,24 @@ Konto użytkownika tworzy się samo przy pierwszym udanym logowaniu OTP.
 
 ## TODO (kolejność wg ważności)
 
-1. **Dane z Neona**: lokalna baza ma puste `erp_tables`, `erp_columns`,
-   `schema_objects`, `schema_embeddings`, `system_prompts`, `quick_actions`,
-   `app_settings`, `ai_reports` — bez nich text-to-SQL nie zna schematu ERP.
-   Plan: `pg_dump` (data-only, schemat `chatbot`, z pominięciem tabel auth
-   i `app_users`) ze starego Neona (URL w env Vercela) → `psql` lokalnie.
-2. **Sync z Optimy**: repo `optima-neon-sync` przepiąć z Neona na lokalny postgres.
+1. ~~**Dane z Neona**~~ — ODPUSZCZONE 2026-08-17, po sprawdzeniu kodu. Powód:
+   - `schema_objects` i `schema_embeddings` nie są używane przez żaden kod
+     aplikacji (tylko definicja schematu i `lib/db/verify.ts`) — to pozostałość
+     po wcześniejszym podejściu z wyszukiwaniem semantycznym;
+   - `erp_tables`, `erp_columns` i `system_prompts` są zaseedowane migracjami
+     0005/0006 z `DEFAULT_ERP_MODEL` i `prompt-defaults.ts`, które są też
+     fallbackiem runtime — czat zna schemat ERP bez żadnego importu;
+   - bez odpowiednika w kodzie zostają tylko `quick_actions`, `ai_reports`
+     i `app_settings`, czyli treści odtwarzalne ręcznie w panelu admina.
+
+   Zdanie „bez nich text-to-SQL nie zna schematu ERP" z poprzedniej wersji tego
+   punktu było nieprawdziwe.
+2. **Sync z Optimy** — teraz najważniejszy punkt listy. Repo `optima-neon-sync`
+   przepiąć z Neona na lokalnego postgresa. Uwaga: allowlist SQL wywodzi się
+   **na żywo z tabel bazowych w schemacie `public`**
+   (`lib/sql/allowlist.ts`), więc dopóki `public` lokalnie jest puste, czat nie
+   ma czego odpytywać — niezależnie od metadanych w schemacie `chatbot`.
+   **Nie wyłączać Neona przed potwierdzeniem, że dane ERP są lokalnie.**
 3. ~~**Wersjonowanie configu deployu**~~ — ZROBIONE 2026-08-17. `Dockerfile`,
    `deploy/compose.yml`, `deploy/caddy/Caddyfile` i `next.config.ts` ze
    `standalone` są w repo (patrz „Config deployu w repo" wyżej). Lokalna edycja
