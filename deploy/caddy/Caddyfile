@@ -1,0 +1,9 @@
+chatbot.wistal.com.pl {
+    tls internal
+    reverse_proxy app:3000
+    encode gzip
+    log {
+        output file /data/access.log
+        format json
+    }
+}
