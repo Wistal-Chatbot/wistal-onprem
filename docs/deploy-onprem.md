@@ -37,6 +37,28 @@ test z serwera:
 Po każdej zmianie w `.env`: `docker compose up -d --force-recreate app`
 (zwykły `restart` NIE wczytuje nowych zmiennych).
 
+## Config deployu w repo
+
+Konfiguracja jest wersjonowana w `wistal-onprem` (bez sekretów):
+
+| W repo | Na serwerze |
+| --- | --- |
+| `Dockerfile` | `/opt/wistal/app/Dockerfile` — ten sam plik, klon repo |
+| `deploy/compose.yml` | `/opt/wistal/compose.yml` |
+| `deploy/caddy/Caddyfile` | `/opt/wistal/caddy/Caddyfile` |
+
+`Dockerfile` jeździ z repo sam (`git reset --hard` w `/opt/wistal/app`). Dwa
+pozostałe leżą **piętro wyżej niż klon**, więc po ich zmianie trzeba je skopiować
+ręcznie — ścieżki w `compose.yml` (`./app`, `./caddy/Caddyfile`) są względne
+wobec `/opt/wistal`, uruchomienie compose z katalogu `deploy/` nie zadziała:
+
+```bash
+cd /opt/wistal && cp app/deploy/compose.yml compose.yml && cp app/deploy/caddy/Caddyfile caddy/Caddyfile
+```
+
+Kopie w repo mogą się rozjechać z serwerem — przy zmianie configu edytuj w repo
+i skopiuj na serwer, nie odwrotnie.
+
 ## Znane miny (wszystkie już wdrożone — nie cofać!)
 
 1. **Obraz bazy musi mieć pgvector**: `pgvector/pgvector:pg16`, nie
@@ -75,9 +97,10 @@ Konto użytkownika tworzy się samo przy pierwszym udanym logowaniu OTP.
    Plan: `pg_dump` (data-only, schemat `chatbot`, z pominięciem tabel auth
    i `app_users`) ze starego Neona (URL w env Vercela) → `psql` lokalnie.
 2. **Sync z Optimy**: repo `optima-neon-sync` przepiąć z Neona na lokalny postgres.
-3. **Wersjonowanie configu deployu**: `Dockerfile`, `compose.yml` (bez sekretów),
-   `caddy/Caddyfile` dodać do repo `wistal-onprem`; `next.config.ts` ze
-   `standalone` zacommitować (na serwerze jest lokalna edycja!).
+3. ~~**Wersjonowanie configu deployu**~~ — ZROBIONE 2026-08-17. `Dockerfile`,
+   `deploy/compose.yml`, `deploy/caddy/Caddyfile` i `next.config.ts` ze
+   `standalone` są w repo (patrz „Config deployu w repo" wyżej). Lokalna edycja
+   `next.config.ts` na serwerze jest już zbędna — zniknie przy `git reset --hard`.
 4. **Higiena sekretów**: zregenerować klucz Resend i klucz admin Anthropic
    (przewinęły się przez czat), usunąć niepotrzebne PAT-y GitHub.
 5. Docelowo: prawdziwy certyfikat TLS zamiast `tls internal`, wpis w firmowym DNS.
