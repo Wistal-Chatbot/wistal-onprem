@@ -102,5 +102,10 @@ Konto użytkownika tworzy się samo przy pierwszym udanym logowaniu OTP.
    `standalone` są w repo (patrz „Config deployu w repo" wyżej). Lokalna edycja
    `next.config.ts` na serwerze jest już zbędna — zniknie przy `git reset --hard`.
 4. **Higiena sekretów**: zregenerować klucz Resend i klucz admin Anthropic
-   (przewinęły się przez czat), usunąć niepotrzebne PAT-y GitHub.
+   (przewinęły się przez czat), usunąć niepotrzebne PAT-y GitHub. Dochodzi
+   **hasło konta `tm`** (też przewinęło się przez czat) — a że `tm` jest w grupie
+   `docker`, czyli faktycznie ma uprawnienia roota, to hasło otwiera cały
+   `/opt/wistal/.env` mimo praw `600`. Rotować je razem z kluczami, nie osobno.
+   Przy haśle Postgresa pamiętać o zmianie w **dwóch** miejscach w `.env`:
+   `POSTGRES_PASSWORD` i hasło wewnątrz `DATABASE_URL`.
 5. Docelowo: prawdziwy certyfikat TLS zamiast `tls internal`, wpis w firmowym DNS.
