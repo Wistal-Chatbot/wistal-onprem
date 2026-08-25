@@ -103,21 +103,20 @@ Konto użytkownika tworzy się samo przy pierwszym udanym logowaniu OTP.
 
    Zdanie „bez nich text-to-SQL nie zna schematu ERP" z poprzedniej wersji tego
    punktu było nieprawdziwe.
-2. **Sync z Optimy** — teraz najważniejszy punkt listy. Repo `optima-neon-sync`
-   przepiąć z Neona na lokalnego postgresa. Allowlist SQL wywodzi się **na żywo
-   z tabel bazowych w schemacie `public`** (`lib/sql/allowlist.ts`), więc dopóki
-   `public` jest puste, czat nie ma czego odpytywać — niezależnie od metadanych
-   w schemacie `chatbot`.
+2. ~~**Sync z Optimy**~~ — ZROBIONE 2026-08-25. Repo `optima-neon-sync` chodzi
+   jako usługa `sync` w compose na serwerze chatbota (Raspberry Pi z README nigdy
+   nie powstało i nie jest potrzebne). Pierwszy pełny cykl: 532 620 wierszy
+   w 9 tabelach, 0 błędów, zero sierot w powiązaniach, dane od 2016-11-02.
+   Cykl powtarza się raz na dobę; świeżość widać w panelu admina
+   („Status systemu" → „Synchronizacja z Optimą", źródło: `public.migration_log`).
 
-   Stan zweryfikowany 2026-08-17: **`public` nie ma ani jednej tabeli**, a
-   `chatbot.query_audit` ma 0 wierszy — czyli on-prem nie wykonano dotąd żadnego
-   zapytania do danych. Metadane są w stanie fabrycznym z migracji (`erp_tables`
-   9, `erp_columns` 80, `system_prompts` 5, `quick_actions` i `ai_reports` 0).
-   Sync musi utworzyć 9 tabel: `kontrahenci`, `towary`, `faktury_sprzedazy`
-   (+ `_pozycje`), `faktury_zakupu` (+ `_pozycje`), `zamowienia_dostawcy`
-   (+ `_pozycje`), `dokumenty_powiazane`.
+   Schemat `public` zakłada `sql/001_public_schema.sql` z repo synca — nie ma go
+   w migracjach drizzle, bo `public` należy do synca, a nie do aplikacji.
+   Połączenie do Optimy: `192.168.1.251`, port **dynamiczny 50150** (świadomie
+   nieprzypięty — patrz sekcja 1 instrukcji w repo synca), konto `wistal_readonly`.
 
-   **Nie wyłączać Neona, dopóki sync nie zapełni lokalnego `public`.**
+   **Neon jest od tego momentu zbędny** — dane płyną z Optimy prosto do lokalnego
+   postgresa i nic ich stamtąd nie potrzebuje.
 3. ~~**Wersjonowanie configu deployu**~~ — ZROBIONE 2026-08-17. `Dockerfile`,
    `deploy/compose.yml`, `deploy/caddy/Caddyfile` i `next.config.ts` ze
    `standalone` są w repo (patrz „Config deployu w repo" wyżej). Lokalna edycja
@@ -130,10 +129,9 @@ Konto użytkownika tworzy się samo przy pierwszym udanym logowaniu OTP.
    Przy haśle Postgresa pamiętać o zmianie w **dwóch** miejscach w `.env`:
    `POSTGRES_PASSWORD` i hasło wewnątrz `DATABASE_URL`.
 5. Docelowo: prawdziwy certyfikat TLS zamiast `tls internal`, wpis w firmowym DNS.
-6. **Migracja poprawiająca seed `erp_columns`**: `towar_kod` był w trzech
-   tabelach pozycji oznaczony jako część klucza głównego, co jest nieprawdą
-   (kolumna leci z `LEFT JOIN` i bywa NULL-em, a `ON CONFLICT` synca celuje
-   w dwie kolumny). Poprawione 2026-08-17 w `lib/erp-schema/model.ts` i wprost
-   w bazie on-prem, ale **seed w migracji `0006_erp_tables.sql` nadal jest
-   błędny** — świeża instalacja odtworzy błąd. Do zrobienia na maszynie z Node:
-   `npx drizzle-kit generate` z migracją danych albo poprawka samego 0006.
+6. ~~**Migracja poprawiająca seed `erp_columns`**~~ — ZROBIONE 2026-08-25,
+   migracja `0008_fix_erp_columns_towar_kod_pk`. `towar_kod` nie jest częścią
+   klucza głównego tabel pozycji (kolumna z LEFT JOIN, bywa NULL; sync robi
+   ON CONFLICT na dwóch kolumnach). Wygenerowana przez drizzle-kit w obrazie
+   `wistal-migrate` na serwerze — lokalna maszyna nie ma Node'a. Idempotentna:
+   ponowne uruchomienie daje UPDATE 0.
