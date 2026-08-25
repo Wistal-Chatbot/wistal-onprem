@@ -181,7 +181,78 @@ export interface SystemStatusRow {
   valueLabel: string;
 }
 
-/** Live health of the two dependencies we can actually check: DB + AI provider. */
+/**
+ * Po ilu godzinach bez udanego cyklu synchronizacja jest „nieświeża". Sync chodzi
+ * raz na dobę (`SYNC_INTERVAL_MINUTES=1440`), więc półtorej doby przepuszcza cykl
+ * spóźniony, ale pokazuje pominięty.
+ */
+const SYNC_STALE_AFTER_MS = 36 * 60 * 60 * 1000;
+
+const relFmt = new Intl.RelativeTimeFormat("pl", { numeric: "auto" });
+
+/** Wiek ostatniego cyklu jako „2 godz. temu" / „wczoraj". */
+function agoPl(date: Date): string {
+  const minutes = Math.round((date.getTime() - Date.now()) / 60_000);
+  if (Math.abs(minutes) < 60) return relFmt.format(minutes, "minute");
+  const hours = Math.round(minutes / 60);
+  if (Math.abs(hours) < 24) return relFmt.format(hours, "hour");
+  return relFmt.format(Math.round(hours / 24), "day");
+}
+
+/**
+ * Stan synchronizacji z Optimą, odczytany z `public.migration_log` — tabeli
+ * zapisywanej przez repo `optima-neon-sync` (jeden wiersz na tabelę na cykl).
+ *
+ * Ten wiersz istnieje, bo awaria synchronizacji jest z natury **cicha**: Optima
+ * łączy się nazwą instancji i działa dalej, więc jedynym objawem są dane, które
+ * przestają się odświeżać. Bez tego trzeba by zaglądać do bazy, żeby zauważyć.
+ *
+ * Brak tabeli (sync jeszcze nie wdrożony) daje `warn`, nigdy wyjątek — cały
+ * przegląd nie może się wywrócić przez nieobecną zależność.
+ */
+async function getOptimaSyncStatus(): Promise<SystemStatusRow> {
+  const base = { key: "sync", label: "Synchronizacja z Optimą" };
+
+  try {
+    const rows = await db.execute(sql`
+      select
+        max(uruchomiono_o) filter (where status = 'ok') as last_ok,
+        count(*) filter (
+          where status = 'error'
+            and uruchomiono_o = (select max(uruchomiono_o) from public.migration_log)
+        ) as failed_in_last_run
+      from public.migration_log
+    `);
+
+    const [row] = rows as unknown as Array<{
+      last_ok: string | Date | null;
+      failed_in_last_run: string | number;
+    }>;
+
+    const lastOk = row?.last_ok ? new Date(row.last_ok) : null;
+    const failed = Number(row?.failed_in_last_run ?? 0);
+
+    if (!lastOk) {
+      return { ...base, online: false, valueLabel: "Nigdy nie uruchomiona" };
+    }
+    // Częściowa awaria: cykl przeszedł, ale któraś tabela padła. Warto pokazać,
+    // bo dane są wtedy niespójne między tabelami, a nie po prostu stare.
+    if (failed > 0) {
+      return {
+        ...base,
+        online: false,
+        valueLabel: `Błędy w ostatnim cyklu (${failed})`,
+      };
+    }
+
+    const stale = Date.now() - lastOk.getTime() > SYNC_STALE_AFTER_MS;
+    return { ...base, online: !stale, valueLabel: agoPl(lastOk) };
+  } catch {
+    return { ...base, online: false, valueLabel: "Brak danych" };
+  }
+}
+
+/** Live health of the dependencies we can actually check: DB, AI provider, sync. */
 export async function getSystemStatus(): Promise<SystemStatusRow[]> {
   let dbOnline = false;
   try {
@@ -192,6 +263,7 @@ export async function getSystemStatus(): Promise<SystemStatusRow[]> {
   }
 
   const modelConfigured = Boolean(process.env.ANTHROPIC_API_KEY);
+  const syncStatus = await getOptimaSyncStatus();
 
   return [
     {
@@ -206,5 +278,6 @@ export async function getSystemStatus(): Promise<SystemStatusRow[]> {
       online: modelConfigured,
       valueLabel: modelConfigured ? "Online" : "Nieskonfigurowany",
     },
+    syncStatus,
   ];
 }
