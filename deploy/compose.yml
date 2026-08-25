@@ -44,8 +44,9 @@ services:
 
   # Sync Comarch Optima -> public.* (repo Wistal-Chatbot/optima-neon-sync,
   # klon w /opt/wistal/sync). Pętla harmonogramu jest w kontenerze, więc nie ma
-  # tu ani crona, ani systemd. Poświadczenia do Optimy i DATABASE_URL wskazujący
-  # na `postgres:5432` idą z sync.env — port bazy pozostaje zamknięty dla LAN-u.
+  # tu ani crona, ani systemd. Poświadczenia do Optimy idą z sync.env, a
+  # DATABASE_URL składa compose z tych samych zmiennych co usługa postgres —
+  # hasło bazy istnieje w jednym miejscu, w /opt/wistal/.env.
   # Schemat docelowy zakłada sql/001_public_schema.sql z tego samego repo.
   sync:
     build:
@@ -53,6 +54,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file: sync.env
+    environment:
+      # Składane z tych samych zmiennych co usługa postgres (compose czyta .env
+      # z tego katalogu), żeby hasło bazy nie musiało być przepisywane do
+      # sync.env i nie mogło się rozjechać po rotacji. Host to nazwa usługi —
+      # połączenie idzie siecią compose, port 5432 pozostaje zamknięty dla LAN.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
       postgres:
         condition: service_healthy
