@@ -49,10 +49,14 @@ services:
   # hasło bazy istnieje w jednym miejscu, w /opt/wistal/.env.
   # Schemat docelowy zakłada sql/001_public_schema.sql z tego samego repo.
   sync:
+    # Profil "cron", nie usługa ciągła — jeden pełny cykl na dobę odpala
+    # harmonogram systemowy (/etc/cron.d/wistal-sync), a nie pętla w programie.
+    # Dzięki profilowi `docker compose up -d` NIE wystartuje synchronizacji;
+    # pętla co kwadrans obciążała Optimę na tyle, że zauważalnie zwolniła.
+    profiles: ["cron"]
     build:
       context: ./sync
       dockerfile: Dockerfile
-    restart: unless-stopped
     env_file: sync.env
     environment:
       # Składane z tych samych zmiennych co usługa postgres (compose czyta .env
