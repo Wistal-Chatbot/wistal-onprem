@@ -37,6 +37,24 @@ test z serwera:
 Po każdej zmianie w `.env`: `docker compose up -d --force-recreate app`
 (zwykły `restart` NIE wczytuje nowych zmiennych).
 
+## Synchronizacja z Optimą
+
+Nie jest usługą ciągłą. Jeden pełny cykl na dobę odpala cron
+(`/etc/cron.d/wistal-sync`, 2:00 czasu serwera, ~6 minut, log
+w `/var/log/wistal-sync.log`):
+
+```bash
+cd /opt/wistal && docker compose --profile cron run --rm -e RUN_ONCE=true -e FORCE_FULL_SYNC=true sync
+```
+
+Usługa siedzi za profilem `cron` **celowo** — inaczej `docker compose up -d`
+z przepisu wyżej wystartowałby pętlę synchronizacji przy najbliższym deployu.
+Pętla co 15 minut obciążała Optimę na tyle, że zauważalnie zwolniła
+(`dokumenty_powiazane` to 148 tys. wierszy i ~165 s przy każdym przebiegu).
+Nie wracać do trybu ciągłego bez wcześniejszego odchudzenia zapytań.
+
+Stan i historia: `docker compose --profile cron run --rm sync python scripts/diagnose.py`.
+
 ## Config deployu w repo
 
 Konfiguracja jest wersjonowana w `wistal-onprem` (bez sekretów):
